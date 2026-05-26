@@ -274,7 +274,7 @@
                      `📦 *Объем:* ${globalVolume} см³\n\n` +
                      `💰 *Расчетная цена:* ${price} руб.`;
 
-        const url = `https://telegram.org{TELEGRAM_TOKEN}/sendMessage`;
+        const url = `https://allorigins.win{encodeURIComponent('https://telegram.org' + TELEGRAM_TOKEN + '/sendMessage')}`;
         
         fetch(url, {
             method: 'POST',
