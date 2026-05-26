@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D-печать на заказ | Быстрый расчет стоимости</title>
+    <style>
+        :root {
+            --primary: #0071e3;
+            --primary-hover: #005bb5;
+            --bg: #f5f5f7;
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+        header {
+            background: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-bottom: 1px solid #e5e5e7;
+        }
+        header h1 { font-size: 40px; margin: 0 0 15px 0; font-weight: 700; letter-spacing: -0.5px; }
+        header p { font-size: 18px; color: var(--text-secondary); margin: 0 0 30px 0; }
+        .btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 980px;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-block;
+            transition: all 0.2s ease;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        
+        .main-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+        @media (max-width: 768px) {
+            .main-container { grid-template-columns: 1fr; }
+        }
+
+        .card { background: white; padding: 30px; border-radius: 18px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card h2 { margin-top: 0; font-size: 22px; margin-bottom: 20px; }
+
+        #drop-zone {
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            padding: 60px 20px;
+            background-color: #fbfbfd;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        #drop-zone.hover { background-color: #f0f0f5; }
+        
+        .result-box { margin-top: 25px; border-top: 1px solid #e5e5e7; padding-top: 20px; display: none; }
+        .result-item { margin: 10px 0; font-size: 15px; color: #424245; }
+        .price-box { margin-top: 15px; padding: 15px; background-color: #e3f2fd; border-radius: 10px; font-size: 20px; color: #0d47a1; font-weight: bold; text-align: center; }
+
+        .material-item { margin-bottom: 20px; }
+        .material-title { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+        .material-desc { font-size: 14px; color: var(--text-secondary); }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: 500; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #d2d2d7; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Профессиональная 3D-печать деталей</h1>
+    <p>Загрузите модель на сайт и узнайте точную стоимость изготовления за секунду</p>
+    <a href="#calc-section" class="btn">Перейти к расчету</a>
+</header>
+
+<div class="main-container" id="calc-section">
+    <!-- ЛЕВАЯ КОЛОНКА: КАЛЬКУЛЯТОР -->
+    <div class="card">
+        <h2>1. Расчет стоимости онлайн</h2>
+        <div id="drop-zone">Перетащите сюда файл .STL<br><span style="font-size:12px; color:var(--text-secondary); font-weight:normal;">или нажмите для выбора</span></div>
+        <input type="file" id="file-input" accept=".stl" style="display: none;">
+
+        <div class="result-box" id="result-box">
+            <div class="result-item"><strong>Файл:</strong> <span id="filename">-</span></div>
+            <div class="result-item"><strong>Размеры (X × Y × Z):</strong> <span id="sizes">-</span> мм</div>
+            <div class="result-item"><strong>Объем модели:</strong> <span id="volume">-</span> см³</div>
+            <div class="price-box">Стоимость: <span id="price">-</span> руб.</div>
+            
+            <!-- ФОРМА ОТПРАВКИ ЗАЯВКИ -->
+            <h3 style="margin-top:25px; font-size:16px;">2. Оформить заказ</h3>
+            <form id="order-form">
+                <div class="form-group">
+                    <label>Ваше имя</label>
+                    <input type="text" id="client-name" required placeholder="Иван">
+                </div>
+                <div class="form-group">
+                    <label>Телефон / Telegram</label>
+                    <input type="text" id="client-contact" required placeholder="+7 (999) 000-00-00">
+                </div>
+                <button type="submit" class="btn" style="width: 100%; border: none; cursor: pointer; margin-top: 10px;">Отправить заказ в работу</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ПРАВАЯ КОЛОНКА: МАТЕРИАЛЫ -->
+    <div class="card">
+        <h2>Материалы в наличии</h2>
+        <div class="material-item">
+            <div class="material-title" style="color:#e91e63;">■ PLA пластик</div>
+            <div class="material-desc">Отлично подходит для фигурок, макетов, декора и прототипов с высокой детализацией.</div>
+        </div>
+        <div class="material-item">
+            <div class="material-title" style="color:#2196f3;">■ PETG пластик</div>
+            <div class="material-desc">Прочный, ударостойкий материал. Идеален для технических деталей, шестеренок, корпусов.</div>
+        </div>
+        <div class="material-item">
+            <div class="material-title" style="color:#4caf50;">■ ABS / ASA пластик</div>
+            <div class="material-desc">Устойчив к температурам и химии. Подходит для автомобильных запчастей и уличного использования.</div>
+        </div>
+        <hr style="border:0; border-top:1px solid #e5e5e7; margin:25px 0;">
+        <p style="font-size:13px; color:var(--text-secondary); margin:0;">* Если у вас файл в формате <strong>.STEP</strong> или нужна консультация, напишите нам напрямую в Telegram: <a href="https://t.me" target="_blank" style="color:var(--primary); text-decoration:none; font-weight:500;">@ВАШ_НИК</a></p>
+    </div>
+</div>
+
+<script>
+    const PRICE_PER_CM3 = 45; 
+    const BASE_SETUP_PRICE = 150; 
+    let globalVolume = 0;
+    let globalSizes = '';
+
+    function parseSTL(arrayBuffer) {
+        const view = new DataView(arrayBuffer);
+        let isBinary = true;
+        for (let i = 0; i < Math.min(arrayBuffer.byteLength, 80); i++) {
+            if (view.getUint8(i) === 0) { isBinary = true; break; }
+            if (i > 70) isBinary = false; 
+        }
+        let totalVolumeMm3 = 0;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+        
+        if (isBinary) {
+            if (arrayBuffer.byteLength < 84) return null;
+            const faces = view.getUint32(80, true);
+            let offset = 84;
+            for (let i = 0; i < faces; i++) {
+                if (offset + 50 > arrayBuffer.byteLength) break;
+                offset += 12;
+                const v1x = view.getFloat32(offset, true); const v1y = view.getFloat32(offset + 4, true); const v1z = view.getFloat32(offset + 8, true); offset += 12;
+                const v2x = view.getFloat32(offset, true); const v2y = view.getFloat32(offset + 4, true); const v2z = view.getFloat32(offset + 8, true); offset += 12;
+                const v3x = view.getFloat32(offset, true); const v3y = view.getFloat32(offset + 4, true); const v3z = view.getFloat32(offset + 8, true); offset += 12;
+                offset += 2;
+                totalVolumeMm3 += (-v3x * v2y * v1z + v2x * v3y * v1z + v3x * v1y * v2z - v1x * v3y * v2z - v2x * v1y * v3z + v1x * v2y * v3z) / 6;
+                minX = Math.min(minX, v1x, v2x, v3x); maxX = Math.max(maxX, v1x, v2x, v3x);
+                minY = Math.min(minY, v1y, v2y, v3y); maxY = Math.max(maxY, v1y, v2y, v3y);
+                minZ = Math.min(minZ, v1z, v2z, v3z); maxZ = Math.max(maxZ, v1z, v2z, v3z);
+            }
+        }
+        return {
+            volumeCm3: Math.abs(totalVolumeMm3) / 1000,
+            sizeX: isFinite(maxX - minX) ? Math.round(maxX - minX) : 0,
+            sizeY: isFinite(maxY - minY) ? Math.round(maxY - minY) : 0,
+            sizeZ: isFinite(maxZ - minZ) ? Math.round(maxZ - minZ) : 0
+        };
+    }
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const resultBox = document.getElementById('result-box');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    ['dragenter', 'dragover'].forEach(eName => { dropZone.addEventListener(eName, (e) => { e.preventDefault(); dropZone.classList.add('hover'); }); });
+    ['dragleave', 'drop'].forEach(eName => { dropZone.addEventListener(eName, (e) => { e.preventDefault(); dropZone.classList.remove('hover'); }); });
+
+    dropZone.addEventListener('drop', (e) => { if(e.dataTransfer.files.length > 0) process(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', (e) => { if(e.target.files.length > 0) process(e.target.files[0]); });
+
+    function process(file) {
+        if (!file.name.toLowerCase().endsWith('.stl')) { alert('Допускаются только файлы формата .STL'); return; }
+        const reader = new FileReader();
+        reader.readAsArrayBuffer(file);
+        reader.onload = function(e) {
+            const data = parseSTL(e.target.result);
+            if (!data) { alert('Ошибка анализа структуры файла.'); return; }
+            
+            let finalPrice = 0;
+            if(data.volumeCm3 > 0.05) {
+                finalPrice = Math.round((data.volumeCm3 * PRICE_PER_CM3) + BASE_SETUP_PRICE);
+}
+globalVolume = data.volumeCm3.toFixed(2);
+globalSizes = ${data.sizeX}×${data.sizeY}×${data.sizeZ};
+
+document.getElementById('filename').innerText = file.name;
+document.getElementById('sizes').innerText = globalSizes;
+document.getElementById('volume').innerText = globalVolume;
+document.getElementById('price').innerText = finalPrice;
+resultBox.style.display = 'block';
+
+// Прокрутка к форме, чтобы пользователь заметил результат
+resultBox.scrollIntoView({ behavior: 'smooth' });
+};
+}
+
+// ОТПРАВКА ЗАЯВКИ В TELEGRAM
+document.getElementById('order-form').addEventListener('submit', function(e) {e.preventDefault();
+
+const name = document.getElementById('client-name').value;
+const contact = document.getElementById('client-contact').value;
+const filename = document.getElementById('filename').innerText;
+const price = document.getElementById('price').innerText;
+
+// Ниже мы вставим код отправки, когда создадим бота
+alert(Заявка принята!\nИмя: ${name}\nКонтакты: ${contact}\nФайл: ${filename}\nОбъем: ${globalVolume} см³\nЦена: ${price} руб.\n\nСейчас мы настроим, чтобы это улетало вам в Telegram!);
+});
