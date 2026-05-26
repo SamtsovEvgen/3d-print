@@ -139,44 +139,74 @@
 </div>
 
 <script>
+        // НАСТРОЙКИ СТОИМОСТИ
     const PRICE_PER_CM3 = 45; 
     const BASE_SETUP_PRICE = 150; 
     let globalVolume = 0;
     let globalSizes = '';
 
+    // НЕУБИВАЕМЫЙ ПАРСЕР STL ДЛЯ ЛЮБЫХ БРАУЗЕРОВ
     function parseSTL(arrayBuffer) {
-        const view = new DataView(arrayBuffer);
-        let isBinary = true;
-        for (let i = 0; i < Math.min(arrayBuffer.byteLength, 80); i++) {
-            if (view.getUint8(i) === 0) { isBinary = true; break; }
-            if (i > 70) isBinary = false; 
-        }
-        let totalVolumeMm3 = 0;
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
-        
-        if (isBinary) {
+        try {
+            const view = new DataView(arrayBuffer);
             if (arrayBuffer.byteLength < 84) return null;
+            
             const faces = view.getUint32(80, true);
-            let offset = 84;
-            for (let i = 0; i < faces; i++) {
-                if (offset + 50 > arrayBuffer.byteLength) break;
-                offset += 12;
-                const v1x = view.getFloat32(offset, true); const v1y = view.getFloat32(offset + 4, true); const v1z = view.getFloat32(offset + 8, true); offset += 12;
-                const v2x = view.getFloat32(offset, true); const v2y = view.getFloat32(offset + 4, true); const v2z = view.getFloat32(offset + 8, true); offset += 12;
-                const v3x = view.getFloat32(offset, true); const v3y = view.getFloat32(offset + 4, true); const v3z = view.getFloat32(offset + 8, true); offset += 12;
-                offset += 2;
-                totalVolumeMm3 += (-v3x * v2y * v1z + v2x * v3y * v1z + v3x * v1y * v2z - v1x * v3y * v2z - v2x * v1y * v3z + v1x * v2y * v3z) / 6;
-                minX = Math.min(minX, v1x, v2x, v3x); maxX = Math.max(maxX, v1x, v2x, v3x);
-                minY = Math.min(minY, v1y, v2y, v3y); maxY = Math.max(maxY, v1y, v2y, v3y);
-                minZ = Math.min(minZ, v1z, v2z, v3z); maxZ = Math.max(maxZ, v1z, v2z, v3z);
+            // Простая проверка: если количество граней не сходится с размером файла, это ASCII (текстовый) STL
+            const isBinary = (84 + faces * 50 === arrayBuffer.byteLength);
+            
+            let totalVolumeMm3 = 0;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+
+            if (isBinary) {
+                let offset = 84;
+                for (let i = 0; i < faces; i++) {
+                    if (offset + 50 > arrayBuffer.byteLength) break;
+                    offset += 12; // Пропуск нормали
+                    
+                    const v1x = view.getFloat32(offset, true); const v1y = view.getFloat32(offset + 4, true); const v1z = view.getFloat32(offset + 8, true); offset += 12;
+                    const v2x = view.getFloat32(offset, true); const v2y = view.getFloat32(offset + 4, true); const v2z = view.getFloat32(offset + 8, true); offset += 12;
+                    const v3x = view.getFloat32(offset, true); const v3y = view.getFloat32(offset + 4, true); const v3z = view.getFloat32(offset + 8, true); offset += 12;
+                    offset += 2; // Пропуск attribute byte count
+                    
+                    totalVolumeMm3 += (-v3x * v2y * v1z + v2x * v3y * v1z + v3x * v1y * v2z - v1x * v3y * v2z - v2x * v1y * v3z + v1x * v2y * v3z) / 6;
+                    
+                    minX = Math.min(minX, v1x, v2x, v3x); maxX = Math.max(maxX, v1x, v2x, v3x);
+                    minY = Math.min(minY, v1y, v2y, v3y); maxY = Math.max(maxY, v1y, v2y, v3y);
+                    minZ = Math.min(minZ, v1z, v2z, v3z); maxZ = Math.max(maxZ, v1z, v2z, v3z);
+                }
+            } else {
+                // Если файл текстовый (ASCII)
+                const text = new TextDecoder().decode(arrayBuffer);
+                const points = text.match(/vertex\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/g);
+                if (points) {
+                    let v = [];
+                    for (let i = 0; i < points.length; i++) {
+                        const parts = points[i].trim().split(/\s+/);
+                        const x = parseFloat(parts[1]), y = parseFloat(parts[2]), z = parseFloat(parts[3]);
+                        v.push({x, y, z});
+                        minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+                        minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+                        
+                        if (v.length === 3) {
+                            totalVolumeMm3 += (-v[2].x * v[1].y * v[0].z + v[1].x * v[2].y * v[0].z + v[2].x * v[0].y * v[1].z - v[0].x * v[2].y * v[1].z - v[1].x * v[0].y * v[2].z + v[0].x * v[1].y * v[2].z) / 6;
+                            v = [];
+                        }
+                    }
+                }
             }
+
+            return {
+                volumeCm3: Math.abs(totalVolumeMm3) / 1000,
+                sizeX: isFinite(maxX - minX) ? Math.round(maxX - minX) : 0,
+                sizeY: isFinite(maxY - minY) ? Math.round(maxY - minY) : 0,
+                sizeZ: isFinite(maxZ - minZ) ? Math.round(maxZ - minZ) : 0
+            };
+        } catch (e) {
+            console.error(e);
+            return null;
         }
-        return {
-            volumeCm3: Math.abs(totalVolumeMm3) / 1000,
-            sizeX: isFinite(maxX - minX) ? Math.round(maxX - minX) : 0,
-            sizeY: isFinite(maxY - minY) ? Math.round(maxY - minY) : 0,
-            sizeZ: isFinite(maxZ - minZ) ? Math.round(maxZ - minZ) : 0
-        };
     }
 
     const dropZone = document.getElementById('drop-zone');
@@ -187,36 +217,42 @@
     ['dragenter', 'dragover'].forEach(eName => { dropZone.addEventListener(eName, (e) => { e.preventDefault(); dropZone.classList.add('hover'); }); });
     ['dragleave', 'drop'].forEach(eName => { dropZone.addEventListener(eName, (e) => { e.preventDefault(); dropZone.classList.remove('hover'); }); });
 
-    dropZone.addEventListener('drop', (e) => { if(e.dataTransfer.files.length > 0) process(e.dataTransfer.files[0]); });
-    fileInput.addEventListener('change', (e) => { if(e.target.files.length > 0) process(e.target.files[0]); });
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); if(e.dataTransfer.files.length > 0) process(e.dataTransfer.files); });
+    fileInput.addEventListener('change', (e) => { if(e.target.files.length > 0) process(e.target.files); });
 
-    function process(file) {
+    function process(files) {
+        const file = files[0];
         if (!file.name.toLowerCase().endsWith('.stl')) { alert('Допускаются только файлы формата .STL'); return; }
+        
         const reader = new FileReader();
+        // Используем универсальный метод чтения блоба
         reader.readAsArrayBuffer(file);
+        
         reader.onload = function(e) {
             const data = parseSTL(e.target.result);
-            if (!data) { alert('Ошибка анализа структуры файла.'); return; }
+            if (!data || data.volumeCm3 === 0) { 
+                alert('Не удалось рассчитать модель. Проверьте, что файл не поврежден и содержит 3D-объект.'); 
+                return; 
+            }
             
             let finalPrice = 0;
-            if(data.volumeCm3 > 0.05) {
+            if(data.volumeCm3 > 0.01) {
                 finalPrice = Math.round((data.volumeCm3 * PRICE_PER_CM3) + BASE_SETUP_PRICE);
-}
-globalVolume = data.volumeCm3.toFixed(2);
-globalSizes = ${data.sizeX}×${data.sizeY}×${data.sizeZ};
+            }
 
-document.getElementById('filename').innerText = file.name;
-document.getElementById('sizes').innerText = globalSizes;
-document.getElementById('volume').innerText = globalVolume;
-document.getElementById('price').innerText = finalPrice;
-resultBox.style.display = 'block';
+            globalVolume = data.volumeCm3.toFixed(2);
+            globalSizes = `${data.sizeX}×${data.sizeY}×${data.sizeZ}`;
 
-// Прокрутка к форме, чтобы пользователь заметил результат
-resultBox.scrollIntoView({ behavior: 'smooth' });
-};
-}
+            document.getElementById('filename').innerText = file.name;
+            document.getElementById('sizes').innerText = globalSizes;
+            document.getElementById('volume').innerText = globalVolume;
+            document.getElementById('price').innerText = finalPrice;
+            resultBox.style.display = 'block';
+            resultBox.scrollIntoView({ behavior: 'smooth' });
+        };
+    }
 
-// ОТПРАВКА ЗАЯВКИ В TELEGRAM
+    // ОТПРАВКА ЗАЯВКИ В TELEGRAM
     document.getElementById('order-form').addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -230,7 +266,6 @@ resultBox.scrollIntoView({ behavior: 'smooth' });
         const filename = document.getElementById('filename').innerText;
         const price = document.getElementById('price').innerText;
 
-        // Формируем красивый текст сообщения для Telegram
         const text = `🚨 *Новый заказ 3D-печати!*\n\n` +
                      `👤 *Имя:* ${name}\n` +
                      `📞 *Контакты:* ${contact}\n` +
@@ -239,31 +274,29 @@ resultBox.scrollIntoView({ behavior: 'smooth' });
                      `📦 *Объем:* ${globalVolume} см³\n\n` +
                      `💰 *Расчетная цена:* ${price} руб.`;
 
-        // Отправляем запрос на сервера Telegram прямо из браузера клиента
         const url = `https://telegram.org{TELEGRAM_TOKEN}/sendMessage`;
         
         fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: TELEGRAM_CHAT_ID,
-                text: text,
-                parse_mode: 'Markdown' // Чтобы текст прилетал с жирным шрифтом
-            })
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: text, parse_mode: 'Markdown' })
         })
         .then(response => {
             if (response.ok) {
-                alert('Заявка успешно отправлена! Мы свяжемся с вами в ближайшее время.');
+                alert('Заявка успешно отправлена! Мы свяжемся с вами.');
                 document.getElementById('order-form').reset();
             } else {
-                alert('Ошибка отправки. Пожалуйста, напишите нам в Telegram напрямую.');
+                alert('Ошибка отправки в Telegram. Напишите нам напрямую.');
             }
         })
         .catch(error => {
-            alert('Ошибка сети. Проверьте подключение к интернету.');
+            alert('Ошибка сети.');
             console.error(error);
         });
     });
 </script>
+
 </body>
 </html>
+
+
