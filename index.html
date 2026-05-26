@@ -217,13 +217,53 @@ resultBox.scrollIntoView({ behavior: 'smooth' });
 }
 
 // ОТПРАВКА ЗАЯВКИ В TELEGRAM
-document.getElementById('order-form').addEventListener('submit', function(e) {e.preventDefault();
+    document.getElementById('order-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // --- ЗАПОЛНИТЕ ЭТИ ДАННЫЕ СВОИМИ КЛЮЧАМИ ---
+        const TELEGRAM_TOKEN = '8987036032:AAE5F3-yr0VsGLAzzpkwSq8OZ9-42yWexYQ';
+        const TELEGRAM_CHAT_ID = '2080468972';
+        // ------------------------------------------
 
-const name = document.getElementById('client-name').value;
-const contact = document.getElementById('client-contact').value;
-const filename = document.getElementById('filename').innerText;
-const price = document.getElementById('price').innerText;
+        const name = document.getElementById('client-name').value;
+        const contact = document.getElementById('client-contact').value;
+        const filename = document.getElementById('filename').innerText;
+        const price = document.getElementById('price').innerText;
 
-// Ниже мы вставим код отправки, когда создадим бота
-alert(Заявка принята!\nИмя: ${name}\nКонтакты: ${contact}\nФайл: ${filename}\nОбъем: ${globalVolume} см³\nЦена: ${price} руб.\n\nСейчас мы настроим, чтобы это улетало вам в Telegram!);
-});
+        // Формируем красивый текст сообщения для Telegram
+        const text = `🚨 *Новый заказ 3D-печати!*\n\n` +
+                     `👤 *Имя:* ${name}\n` +
+                     `📞 *Контакты:* ${contact}\n` +
+                     `📂 *Файл:* ${filename}\n` +
+                     `📏 *Размеры:* ${globalSizes} мм\n` +
+                     `📦 *Объем:* ${globalVolume} см³\n\n` +
+                     `💰 *Расчетная цена:* ${price} руб.`;
+
+        // Отправляем запрос на сервера Telegram прямо из браузера клиента
+        const url = `https://telegram.org{TELEGRAM_TOKEN}/sendMessage`;
+        
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: text,
+                parse_mode: 'Markdown' // Чтобы текст прилетал с жирным шрифтом
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Заявка успешно отправлена! Мы свяжемся с вами в ближайшее время.');
+                document.getElementById('order-form').reset();
+            } else {
+                alert('Ошибка отправки. Пожалуйста, напишите нам в Telegram напрямую.');
+            }
+        })
+        .catch(error => {
+            alert('Ошибка сети. Проверьте подключение к интернету.');
+            console.error(error);
+        });
+    });
+</script>
+</body>
+</html>
